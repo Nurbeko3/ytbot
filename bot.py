@@ -10,21 +10,25 @@ load_dotenv()
 TOKEN = os.getenv("BOT_API_KEY")
 
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
+
+# Increase timeouts for large file uploads
+telebot.apihelper.CONNECT_TIMEOUT = 90
+telebot.apihelper.READ_TIMEOUT = 900 # 15 minutes for large files
+
                       
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     bot.reply_to(
-        message, "Hello, I'm a <b>Simple Youtube Downloader!👋</b>\n\nTo get started, just type the /help command.")
+        message, "Assalomu alaykum! Men <b>Youtube Downloader botiman!👋</b>\n\nBoshlash uchun /help buyrug'ini yuboring.")
 
 @bot.message_handler(commands=['help'])
 def send_help(message):
     bot.reply_to(
         message,
         """
-        <b>Just send your youtube link and select the video quality.</b> 😉
+        <b>Shunchaki video havolasini yuboring va sifatini tanlang.</b> 😉
   <i>
-  Developer: @dev00111
-  Source: <a href="https://github.com/hansanaD/TelegramYTDLBot">TelegramYTDLBot</a></i>
+  Dasturchi: @dev00111
         """, disable_web_page_preview=True,)
         
     
@@ -46,19 +50,19 @@ def callback_query(call):
     videoURL = checker.url_cache.get(short_id)
     
     if not videoURL:
-        bot.answer_callback_query(call.id, "Error: Link expired or not found. Please send the link again.", show_alert=True)
+        bot.answer_callback_query(call.id, "Xatolik: Havola muddati tugagan. Iltimos, havolani qaytadan yuboring.", show_alert=True)
         return
 
-    bot.answer_callback_query(call.id, f"Selected {receivedData} to download.")
+    bot.answer_callback_query(call.id, f"{receivedData} sifati tanlandi.")
     bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
 
     myqueues.download_queue.put((call.message, videoURL, receivedData))
     queue_position = myqueues.download_queue.qsize()
 
     if queue_position == 1:
-        bot.send_message(call.message.chat.id, "Download has been added to the queue.")
+        bot.send_message(call.message.chat.id, "Yuklash navbatga qo'shildi.")
     else:
-        bot.send_message(call.message.chat.id, f"Download has been added to the queue at #{queue_position}.")
+        bot.send_message(call.message.chat.id, f"Yuklash navbatga qo'shildi. Navbatingiz: #{queue_position}.")
 
 
 

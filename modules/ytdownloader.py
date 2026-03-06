@@ -9,7 +9,7 @@ def download(bot, message, userInput, videoURL):
     if not os.path.exists(mediaPath):
         os.makedirs(mediaPath)
 
-    downloadMsg = bot.send_message(chat_id=message.chat.id, text="<b>Processing...📥</b>")
+    downloadMsg = bot.send_message(chat_id=message.chat.id, text="<b>Tayyorlanmoqda...📥</b>")
 
     ydl_opts = {
         'quiet': True,
@@ -21,20 +21,17 @@ def download(bot, message, userInput, videoURL):
             info = ydl.extract_info(videoURL, download=False)
             
             # 1. Handle Carousel/Gallery
-            if userInput == "Full Gallery / Carousel":
-                bot.edit_message_text(chat_id=downloadMsg.chat.id, message_id=downloadMsg.message_id, text="<b>Sending Gallery...🖼</b>")
+            if userInput == "To'liq Galereya":
+                bot.edit_message_text(chat_id=downloadMsg.chat.id, message_id=downloadMsg.message_id, text="<b>Galereya yuborilmoqda...🖼</b>")
                 media_group = []
                 entries = info.get('entries', [])
                 
-                # If flat extraction or missing entries, entries might be empty or different
                 if not entries:
                      entries = [info]
                 
                 for entry in entries[:10]: # Telegram limit is 10 items
-                    # Try to get the direct image URL from various potential fields
                     photo_url = entry.get('url')
                     
-                    # If it's a flat entry or missing direct URL, use thumbnails
                     if not photo_url or "instagram.com" in photo_url:
                          thumbnails = entry.get('thumbnails')
                          if thumbnails:
@@ -45,13 +42,13 @@ def download(bot, message, userInput, videoURL):
                 
                 if media_group:
                     bot.send_media_group(message.chat.id, media_group)
-                    bot.send_message(message.chat.id, f"✅ Done! <b>{info.get('title', 'Gallery')}</b>\n\n<i>Created by @Makkalik_yigit</i>", parse_mode="HTML")
+                    bot.send_message(message.chat.id, f"✅ Tayyor! <b>{info.get('title', 'Galereya')}</b>\n\n<i>Yaratuvchi: @Makkalik_yigit</i>", parse_mode="HTML")
                 else:
-                    bot.send_message(message.chat.id, "❌ Error: Could not find images in this post.")
+                    bot.send_message(message.chat.id, "❌ Xatolik: Ushbu postdan rasm topilmadi.")
                 
             # 2. Handle Single Photo
-            elif userInput == "Download Photo":
-                bot.edit_message_text(chat_id=downloadMsg.chat.id, message_id=downloadMsg.message_id, text="<b>Sending Photo...🖼</b>")
+            elif userInput == "Rasmni yuklash":
+                bot.edit_message_text(chat_id=downloadMsg.chat.id, message_id=downloadMsg.message_id, text="<b>Rasm yuborilmoqda...🖼</b>")
                 photo_url = info.get('url')
                 
                 if not photo_url or "instagram.com" in photo_url:
@@ -63,11 +60,11 @@ def download(bot, message, userInput, videoURL):
                     bot.send_photo(
                         message.chat.id, 
                         photo_url, 
-                        caption=f"✅ <b>{info.get('title', 'Photo')}</b>\n\n<i>Created by @Makkalik_yigit</i>", 
+                        caption=f"✅ <b>{info.get('title', 'Rasm')}</b>\n\n<i>Yaratuvchi: @Makkalik_yigit</i>", 
                         parse_mode="HTML"
                     )
                 else:
-                    bot.send_message(message.chat.id, "❌ Error: Could not find image URL.")
+                    bot.send_message(message.chat.id, "❌ Xatolik: Rasm havolasini topib bo'lmadi.")
 
             # 3. Handle Video
             else:
@@ -103,25 +100,35 @@ def download(bot, message, userInput, videoURL):
                             break
                     
                     if not final_filename:
-                         raise Exception("Download failed, file not found.")
+                         raise Exception("Yuklashda xatolik yuz berdi, fayl topilmadi.")
 
-                    bot.edit_message_text(chat_id=downloadMsg.chat.id, message_id=downloadMsg.message_id, text="<b>Uploading Video...📤</b>")
+                    bot.edit_message_text(chat_id=downloadMsg.chat.id, message_id=downloadMsg.message_id, text="<b>Video yuklanmoqda...📤</b>")
 
                     file_path = os.path.join(mediaPath, final_filename)
+                    file_size = os.path.getsize(file_path) / (1024 * 1024) # Size in MB
+
+                    if file_size > 50:
+                        bot.send_message(message.chat.id, f"⚠️ <b>Diqqat:</b> Fayl hajmi {file_size:.1f}MB. Telegram botlari uchun limit 50MB. Yuklashda xatolik bo'lishi mumkin.")
+
                     with open(file_path, 'rb') as video:
                         bot.send_video(
                             message.chat.id, 
                             video, 
-                            thumb=requests.get(down_info.get('thumbnail')).content if down_info.get('thumbnail') else None,
-                            caption=f"<b>Title:</b><i> {down_info.get('title')} </i>\n<b>URL:</b><i> {videoURL} </i>\n<b>Quality:</b><i> {userInput} </i>\n\n<i><b>Created by @Makkalik_yigit</b></i>",
-                            parse_mode="HTML"
+                            thumb=requests.get(down_info.get('thumbnail'), timeout=10).content if down_info.get('thumbnail') else None,
+                            caption=f"<b>Nomi:</b><i> {down_info.get('title')} </i>\n<b>Havola:</b><i> {videoURL} </i>\n<b>Sifati:</b><i> {userInput} </i>\n\n<i><b>Yaratuvchi: @Makkalik_yigit</b></i>",
+                            parse_mode="HTML",
+                            timeout=600 # 10 minutes timeout for this specific upload
                         )
                     
                     if os.path.exists(file_path):
                         os.remove(file_path)
 
     except Exception as e:
-        bot.send_message(message.chat.id, f"❌ Error: {str(e)}")
+        error_msg = str(e)
+        if "Request Entity Too Large" in error_msg or "413" in error_msg:
+             error_msg = "Fayl juda katta (50MB dan ortiq). Telegram bot API orqali bunday katta fayllarni yuborib bo'lmaydi."
+        
+        bot.send_message(message.chat.id, f"❌ <b>Xatolik yuz berdi:</b>\n{error_msg}", parse_mode="HTML")
         print(f"Download Error: {e}")
 
     finally:

@@ -14,10 +14,10 @@ def linkCheck(bot, message):
         videoURL = userLinks[0]
         qualityChecker(bot=bot, message=message, videoURL=videoURL)
     else:
-        bot.reply_to(message, "No links found!")
+        bot.reply_to(message, "🧐 <b>Hech qanday havola topilmadi!</b>\nIltimos, video havolasini yuboring.")
 
 def qualityChecker(bot, message, videoURL):
-    qualityCheckerMsg = bot.reply_to(message, "Looking for Available Qualities..🔎")
+    qualityCheckerMsg = bot.reply_to(message, "Kutilmoqda... 🔎")
 
     ydl_opts = {
         'quiet': True,
@@ -33,15 +33,20 @@ def qualityChecker(bot, message, videoURL):
                 info = ydl.extract_info(videoURL, download=False)
             except Exception as e:
                 # If extraction fails (e.g., [Instagram] no video), try flat extraction for metadata
-                if "no video in this post" in str(e).lower() or "video" in str(e).lower():
+                error_str = str(e).lower()
+                if "no video in this post" in error_str or "video" in error_str:
                     ydl_opts['extract_flat'] = True
                     with yt_dlp.YoutubeDL(ydl_opts) as ydl_flat:
                         info = ydl_flat.extract_info(videoURL, download=False)
+                elif "private" in error_str:
+                    raise Exception("Bu video yopiq (shaxsiy) yoki unga kirish cheklangan.")
+                elif "copyright" in error_str:
+                    raise Exception("Bu video mualliflik huquqi bilan himoyalangan.")
                 else:
                     raise e
 
             if not info:
-                raise Exception("Could not retrieve media info.")
+                raise Exception("Media ma'lumotlarini olib bo'lmadi. Havola to'g'riligini tekshiring.")
 
             # Detect type
             is_playlist = info.get('_type') == 'playlist' or 'entries' in info
@@ -52,20 +57,20 @@ def qualityChecker(bot, message, videoURL):
 
             if is_playlist:
                 # Instagram Carousel or Youtube Playlist
-                q_name = "Full Gallery / Carousel"
+                q_name = "To'liq Galereya"
                 entries = info.get('entries', [])
-                count = len(entries) if entries else "Multi"
+                count = len(entries) if entries else "Bir nechta"
                 available_qualities[q_name] = {
                     "q": q_name,
-                    "size": f"{count} items",
+                    "size": f"{count} ta element",
                     "format_id": "playlist"
                 }
             elif not has_video:
                 # No video format means it's likely a Photo or just metadata available
-                q_name = "Download Photo"
+                q_name = "Rasmni yuklash"
                 available_qualities[q_name] = {
                     "q": q_name,
-                    "size": "Source Image",
+                    "size": "Asl o'lcham",
                     "format_id": "photo"
                 }
             else:
@@ -79,7 +84,7 @@ def qualityChecker(bot, message, videoURL):
                             q_name = f"{height}p"
                         
                         filesize = f.get('filesize') or f.get('filesize_approx')
-                        size_str = f"{filesize / (1024*1024):.1f} MB" if filesize else "Unknown size"
+                        size_str = f"{filesize / (1024*1024):.1f} MB" if filesize else "Noma'lum"
                         
                         if q_name not in available_qualities or (filesize and available_qualities[q_name]['size_raw'] < filesize):
                              available_qualities[q_name] = {
@@ -111,16 +116,19 @@ def qualityChecker(bot, message, videoURL):
         except:
             pass
             
-        bot.send_message(chat_id=message.chat.id, text=f"📥 <b>{info.get('title', 'Media')}</b>\n\nChoose an option:", reply_markup=gen_markup(), parse_mode="HTML")
+        bot.send_message(chat_id=message.chat.id, text=f"📥 <b>{info.get('title', 'Media')}</b>\n\nYuklash turini tanlang:", reply_markup=gen_markup(), parse_mode="HTML")
 
     except Exception as e:
         print(f"Checker Error: {e}")
         try:
              # Strip color codes from error message
              clean_error = re.sub(r'\u001b\[[0-9;]*m', '', str(e))
-             bot.edit_message_text(chat_id=qualityCheckerMsg.chat.id, message_id=qualityCheckerMsg.message_id, text=f"❌ Error: {clean_error}")
+             if "Sign in to confirm you’re not a bot" in clean_error:
+                 clean_error = "YouTube bot ekanligimni aniqladi. Keyinroq qayta urinib ko'ring."
+             
+             bot.edit_message_text(chat_id=qualityCheckerMsg.chat.id, message_id=qualityCheckerMsg.message_id, text=f"❌ <b>Xatolik yuz berdi:</b>\n{clean_error}", parse_mode="HTML")
         except:
-             bot.send_message(chat_id=message.chat.id, text=f"❌ Error Overlay: {str(e)}")
+             bot.send_message(chat_id=message.chat.id, text=f"❌ Xatolik: {str(e)}")
 
 
 
