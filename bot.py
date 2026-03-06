@@ -9,6 +9,10 @@ load_dotenv()
 
 TOKEN = os.getenv("BOT_API_KEY")
 
+# Configure bot to use local Telegram Bot API server
+from telebot import apihelper
+apihelper.API_URL = "http://localhost:8081/bot{0}/{1}"
+
 bot = telebot.TeleBot(TOKEN, parse_mode="HTML")
 
 # Increase timeouts for large file uploads

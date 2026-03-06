@@ -107,8 +107,10 @@ def download(bot, message, userInput, videoURL):
                     file_path = os.path.join(mediaPath, final_filename)
                     file_size = os.path.getsize(file_path) / (1024 * 1024) # Size in MB
 
-                    if file_size > 50:
-                        bot.send_message(message.chat.id, f"⚠️ <b>Diqqat:</b> Fayl hajmi {file_size:.1f}MB. Telegram botlari uchun limit 50MB. Yuklashda xatolik bo'lishi mumkin.")
+                    if file_size > 2000:
+                        bot.send_message(message.chat.id, f"⚠️ <b>Diqqat:</b> Fayl hajmi {file_size:.1f}MB. Telegram'ning maksimal limiti 2GB (2000MB).")
+                    elif file_size > 50:
+                        bot.send_message(message.chat.id, f"ℹ️ <b>Ma'lumot:</b> Fayl hajmi {file_size:.1f}MB. Local API server orqali yuklanmoqda...")
 
                     with open(file_path, 'rb') as video:
                         bot.send_video(
